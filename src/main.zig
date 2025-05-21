@@ -1,9 +1,9 @@
 const std = @import("std");
-const hello = @import("hello.zig");
-const goodbye = @import("goodbye.zig");
-const echo = @import("echo.zig");
-const guess = @import("guess.zig");
-const writer = @import("writer.zig");
+const hello = @import("ziglets/hello.zig");
+const goodbye = @import("ziglets/goodbye.zig");
+const echo = @import("ziglets/echo.zig");
+const guess = @import("ziglets/guess.zig");
+const writer = @import("ziglets/writer.zig");
 
 const CommandFn = *const fn (allocator: std.mem.Allocator, args: []const []const u8) anyerror!void;
 
