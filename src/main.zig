@@ -30,7 +30,7 @@ pub fn main() !void {
         std.debug.print(
             \\ziglets <command>
             \\
-            \\Comandi disponibili:
+            \\Available commands:
             \\  hello      Prints 'Hello, World!'
             \\  goodbye    Prints 'Goodbye, World!'
             \\  echo ...   Starts echo with provided arguments
