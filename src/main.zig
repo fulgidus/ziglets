@@ -3,6 +3,7 @@ const hello = @import("hello.zig");
 const goodbye = @import("goodbye.zig");
 const echo = @import("echo.zig");
 const guess = @import("guess.zig");
+const writer = @import("writer.zig");
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -34,7 +35,8 @@ pub fn main() !void {
             \\  goodbye    Prints 'Goodbye, World!'
             \\  echo ...   Starts echo with provided arguments
             \\  guess      Play "Guess the number"
-            \\  help       Show this page
+            \\  writer ... Save a string to file.txt and display its content
+            \\  help       Shows this page
             \\
         , .{});
     } else if (std.mem.eql(u8, command, "echo")) {
@@ -45,6 +47,12 @@ pub fn main() !void {
         try echo.run(arena.allocator(), args.items[2..]);
     } else if (std.mem.eql(u8, command, "guess")) {
         try guess.run();
+    } else if (std.mem.eql(u8, command, "writer")) {
+        if (args.items.len < 3) {
+            std.debug.print("Usage: ziglets writer <text>\n", .{});
+            return error.InvalidArguments;
+        }
+        try writer.run(arena.allocator(), args.items[2..]);
     } else {
         std.debug.print("Unknown command: {s}\n", .{command});
         std.debug.print("Try 'ziglets help' for more information.\n", .{});
