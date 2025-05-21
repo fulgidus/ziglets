@@ -1,21 +1,15 @@
-const std = @import("std");
+const std = @import("std"); // Import the Zig standard library
 
-pub fn run(allocator: std.mem.Allocator, args: [][]const u8) !void {
-    if (args.len < 1) {
-        std.debug.print("Usage: my-zig-cli echo <args...>\n", .{});
-        return error.InvalidArguments;
+pub fn run(_: std.mem.Allocator, args: []const []const u8) !void { // Define the 'run' function, takes an allocator (unused) and an array of string slices as arguments, returns void or error
+    if (args.len == 0) { // If there are no arguments
+        std.debug.print("\n", .{}); // Print a newline
+        return; // Exit the function
     }
-    var echo_args = try allocator.alloc([]const u8, args.len + 1);
-    echo_args[0] = "echo";
-    for (args, 1..) |arg, i| {
-        echo_args[i] = arg;
+    for (args, 0..) |arg, i| { // Iterate over each argument and its index
+        std.debug.print("{s}", .{arg}); // Print the argument as a string
+        if (i != args.len - 1) { // If this is not the last argument
+            std.debug.print(" ", .{}); // Print a space
+        }
     }
-    var child = std.process.Child.init(echo_args, allocator);
-    child.stdin_behavior = .Inherit;
-    child.stdout_behavior = .Inherit;
-    child.stderr_behavior = .Inherit;
-    const term = try child.spawnAndWait();
-    if (term.Exited != 0) {
-        std.debug.print("echo exited with code {}\n", .{term.Exited});
-    }
+    std.debug.print("\n", .{}); // Print a newline at the end
 }
