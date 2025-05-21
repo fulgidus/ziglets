@@ -3,9 +3,7 @@ const std = @import("std");
 pub fn run() !void {
     const stdout = std.io.getStdOut().writer();
     const stdin = std.io.getStdIn().reader();
-    var prng = std.rand.DefaultPrng.init(@intCast(u64, std.time.timestamp()));
-    const secret = prng.random().intRangeAtMost(u32, 1, 100);
-
+    const secret = std.crypto.random.intRangeAtMost(u32, 1, 100);
     try stdout.print("Indovina il numero (1-100):\n", .{});
     while (true) {
         try stdout.print("> ", .{});
