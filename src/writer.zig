@@ -5,10 +5,10 @@ pub fn run(allocator: std.mem.Allocator, args: [][]const u8) !void {
         std.debug.print("Usage: ziglets writer <text>\n", .{});
         return error.InvalidArguments;
     }
-    // Unisci gli argomenti in una singola stringa
+    // Combine the arguments into a single string
     const text = try std.mem.join(allocator, " ", args);
 
-    // Scrivi su file.txt
+    // Write to file.txt
     const file_path = "file.txt";
     {
         var file = try std.fs.cwd().createFile(file_path, .{ .truncate = true, .read = true });
@@ -16,7 +16,7 @@ pub fn run(allocator: std.mem.Allocator, args: [][]const u8) !void {
         try file.writer().writeAll(text);
     }
 
-    // Rileggi e mostra il contenuto
+    // Read and display the content
     {
         var file = try std.fs.cwd().openFile(file_path, .{});
         defer file.close();
