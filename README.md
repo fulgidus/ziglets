@@ -45,6 +45,7 @@ zig-out/bin/ziglets help
 - `guess` &mdash; Play a "Guess the number" game
 - `writer ...` &mdash; Save a string to `file.txt` and display its content
 - `base64 ...` &mdash; Encode text to Base64
+- `pgen ...` &mdash; Generate a random password
 - `calculator` &mdash; Interactive calculator (press keys, Q to exit)
 - `help` &mdash; Shows the help page
 
@@ -56,6 +57,7 @@ zig-out/bin/ziglets echo Zig is fun!
 zig-out/bin/ziglets guess
 zig-out/bin/ziglets writer Hello from Zig!
 zig-out/bin/ziglets base64 "Hello, Base64!"
+zig-out/bin/ziglets pgen -l 16 -aA1&
 zig-out/bin/ziglets calculator
 ```
 
