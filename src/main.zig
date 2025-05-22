@@ -23,6 +23,7 @@ fn helpHandler(_: std.mem.Allocator, _: []const []const u8) !void {
         \\  echo ...   Starts echo with provided arguments
         \\  guess      Play "Guess the number"
         \\  writer ... Save a string to file.txt and display its content
+        \\  calculator Interactive calculator (press keys, Esc to exit)
         \\  help       Shows this page
         \\
     , .{});
@@ -46,6 +47,7 @@ const commands = [_]Command{
         }
     }.run },
     .{ .name = "writer", .description = "Save a string to file.txt and display its content", .handler = writer.run },
+    .{ .name = "calculator", .description = "Interactive calculator (press keys, Esc to exit)", .handler = @import("ziglets/calculator.zig").run },
     .{ .name = "help", .description = "Shows this page", .handler = helpHandler },
 };
 
