@@ -1,6 +1,8 @@
 # Ziglets
 
-<img src="img/zero.png" alt="Ziglets Logo" width="300" style="margin: 0 auto;"/>
+<div align="center">
+    <img src="img/zero.png" alt="Ziglets Logo" width="300"/>
+</div>
 
 **Ziglets** is a collection of simple Zig CLI applications, designed as educational examples for learning the Zig programming language.
 
