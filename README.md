@@ -37,7 +37,7 @@ zig-out/bin/ziglets help
 - `echo ...` &mdash; Runs the system `echo` command with the provided arguments
 - `guess` &mdash; Play a "Guess the number" game
 - `writer ...` &mdash; Save a string to `file.txt` and display its content
-- `calculator` &mdash; Interactive calculator (press keys, Esc to exit)
+- `calculator` &mdash; Interactive calculator (press keys, Q to exit)
 - `help` &mdash; Shows the help page
 
 ### Example
