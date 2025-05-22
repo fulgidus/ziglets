@@ -44,7 +44,12 @@ const commands = [_]Command{
 
 fn helpHandler(_: std.mem.Allocator, _: []const []const u8) !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("ziglets <command>\n\nAvailable commands:\n", .{});
+    try stdout.print(
+        \\ziglets <command>
+        \\
+        \\Available commands:
+        \\
+    , .{});
     for (commands) |cmd| {
         // Print the command name, padded to 10 chars, and its description
         try stdout.print("  {s:.<15}{s}\n", .{ cmd.name, cmd.description });
