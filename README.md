@@ -47,6 +47,7 @@ zig-out/bin/ziglets help
 - `base64 ...` &mdash; Encode text to Base64
 - `pgen ...` &mdash; Generate a random password
 - `calculator` &mdash; Interactive calculator (press keys, Q to exit)
+- `touch ...` &mdash; Create empty file(s)
 - `help` &mdash; Shows the help page
 
 ### Example
@@ -59,6 +60,7 @@ zig-out/bin/ziglets writer Hello from Zig!
 zig-out/bin/ziglets base64 "Hello, Base64!"
 zig-out/bin/ziglets pgen -l 16 -aA1&
 zig-out/bin/ziglets calculator
+zig-out/bin/ziglets touch file.txt
 ```
 
 ## Educational value

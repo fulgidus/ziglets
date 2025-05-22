@@ -7,6 +7,7 @@ const writer = @import("ziglets/writer.zig");
 const base64 = @import("ziglets/base64.zig");
 const calc = @import("ziglets/calculator.zig");
 const pgen = @import("ziglets/pgen.zig");
+const touch = @import("ziglets/touch.zig");
 
 const CommandFn = *const fn (allocator: std.mem.Allocator, args: []const []const u8) anyerror!void;
 
@@ -15,24 +16,6 @@ const Command = struct {
     description: []const u8,
     handler: CommandFn,
 };
-
-fn helpHandler(_: std.mem.Allocator, _: []const []const u8) !void {
-    std.debug.print(
-        \\ziglets <command>
-        \\
-        \\Available commands:
-        \\  hello      Prints 'Hello, World!'
-        \\  goodbye    Prints 'Goodbye, World!'
-        \\  echo ...   Starts echo with provided arguments
-        \\  guess      Play "Guess the number"
-        \\  writer ... Save a string to file.txt and display its content
-        \\  base64 ... Encode text to Base64
-        \\  pgen ...   Generate a random password
-        \\  calculator Interactive calculator (press keys, Esc to exit)
-        \\  help       Shows this page
-        \\
-    , .{});
-}
 
 const commands = [_]Command{
     .{ .name = "hello", .description = "Prints 'Hello, World!'", .handler = struct {
@@ -55,8 +38,19 @@ const commands = [_]Command{
     .{ .name = "base64", .description = "Encode text to Base64", .handler = base64.run },
     .{ .name = "pgen", .description = "Generate a random password", .handler = pgen.run },
     .{ .name = "calculator", .description = "Interactive calculator (press keys, Esc to exit)", .handler = calc.run },
+    .{ .name = "touch", .description = "Create empty file(s)", .handler = touch.run },
     .{ .name = "help", .description = "Shows this page", .handler = helpHandler },
 };
+
+fn helpHandler(_: std.mem.Allocator, _: []const []const u8) !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("ziglets <command>\n\nAvailable commands:\n", .{});
+    for (commands) |cmd| {
+        // Print the command name, padded to 10 chars, and its description
+        try stdout.print("  {s:.<15}{s}\n", .{ cmd.name, cmd.description });
+    }
+    try stdout.print("\n", .{});
+}
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
