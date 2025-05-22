@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 // Calculator state
 const State = struct {
@@ -30,10 +31,73 @@ fn applyOp(state: *State) void {
     }
 }
 
+// Funzioni specifiche per piattaforma per l'input senza blocco
+const RawMode = if (builtin.os.tag == .windows) struct {
+    const windows = std.os.windows;
+
+    // Costanti Windows per modalità console
+    const ENABLE_ECHO_INPUT = 0x0004;
+    const ENABLE_LINE_INPUT = 0x0002;
+
+    var original_mode: windows.DWORD = undefined;
+    var handle: windows.HANDLE = undefined;
+
+    pub fn enable() !void {
+        handle = windows.kernel32.GetStdHandle(windows.STD_INPUT_HANDLE) orelse return error.GetStdHandleFailed;
+
+        if (windows.kernel32.GetConsoleMode(handle, &original_mode) == 0) {
+            return error.GetConsoleModeFailed;
+        }
+
+        // Disattiva la modalità canonica e l'eco
+        var new_mode = original_mode;
+        new_mode &= ~@as(windows.DWORD, ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+
+        if (windows.kernel32.SetConsoleMode(handle, new_mode) == 0) {
+            return error.SetConsoleModeFailed;
+        }
+    }
+
+    pub fn disable() !void {
+        if (windows.kernel32.SetConsoleMode(handle, original_mode) == 0) {
+            return error.SetConsoleModeFailed;
+        }
+    }
+} else struct {
+    const posix = std.posix;
+
+    var original_termios: posix.termios = undefined;
+
+    pub fn enable() !void {
+        const stdin_fd = posix.STDIN_FILENO;
+        original_termios = try posix.tcgetattr(stdin_fd);
+        var raw = original_termios;
+
+        // Disabilita echo e modalità canonica
+        raw.lflag &= ~@as(posix.tcflag_t, posix.ECHO | posix.ICANON | posix.ISIG | posix.IEXTEN);
+        raw.iflag &= ~@as(posix.tcflag_t, posix.IXON | posix.ICRNL | posix.BRKINT | posix.INPCK | posix.ISTRIP);
+        raw.oflag &= ~@as(posix.tcflag_t, posix.OPOST);
+        raw.cc[posix.VMIN] = 1;
+        raw.cc[posix.VTIME] = 0;
+
+        try posix.tcsetattr(stdin_fd, .FLUSH, raw);
+    }
+
+    pub fn disable() !void {
+        try posix.tcsetattr(posix.STDIN_FILENO, .FLUSH, original_termios);
+    }
+};
+
 pub fn run(_: std.mem.Allocator, _: []const []const u8) !void {
     var state = State{};
     var stdin = std.io.getStdIn().reader();
     var stdout = std.io.getStdOut().writer();
+
+    // Abilita la modalità raw per l'input istantaneo
+    try RawMode.enable();
+    defer {
+        RawMode.disable() catch {};
+    }
 
     try stdout.print("Calculator (press Q to exit)\n", .{});
     try printDisplay(&state, stdout);
@@ -41,7 +105,7 @@ pub fn run(_: std.mem.Allocator, _: []const []const u8) !void {
     while (true) {
         var buf: [1]u8 = undefined;
 
-        // Leggiamo un singolo carattere
+        // Leggiamo un singolo carattere (ora senza bisogno di premere Enter)
         const bytes_read = stdin.read(&buf) catch |err| {
             try stdout.print("\nError durante la lettura: {s}\n", .{@errorName(err)});
             return err;
