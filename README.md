@@ -1,6 +1,11 @@
 # Ziglets
 
+<img src="img/zero.png" alt="Ziglets Logo" width="300"/>
+
 **Ziglets** is a collection of simple Zig CLI applications, designed as educational examples for learning the Zig programming language.
+
+[![Zig](https://img.shields.io/badge/Zig-0.14.0-orange.svg)](https://ziglang.org/download/)
+[![License](https://img.shields.io/badge/GPL-3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 
 ## Purpose
 
