@@ -1,6 +1,6 @@
 const std = @import("std");
 
-/// Calculates the factorial of a number using multiple threads (limited to u128).
+/// Calculates the factorial of a number using multiple threads with big integer support.
 /// Usage: ziglets factorial <number> [num_threads]
 pub fn run(allocator: std.mem.Allocator, args: []const []const u8) !void {
     const stdout = std.io.getStdOut().writer();
@@ -21,9 +21,9 @@ pub fn run(allocator: std.mem.Allocator, args: []const []const u8) !void {
         return;
     }
 
+    // For large numbers, use big integer arithmetic
     if (n > 34) {
-        // 34! fits in u128, 35! no
-        try stdout.print("Error: This factorial implementation supports up to 34! (u128 limit).\n", .{});
+        try calculateBigFactorial(allocator, n, num_threads);
         return;
     }
     try stdout.print("Calculating {d}! using {d} thread(s)...\n", .{ n, num_threads });
@@ -79,4 +79,117 @@ fn threadMain(start: u32, end: u32, result: *u128) void {
         tmp *= i;
     }
     result.* = tmp;
+}
+
+/// Calculates factorial using big integer arithmetic for numbers > 34
+fn calculateBigFactorial(allocator: std.mem.Allocator, n: u32, num_threads: u32) !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Calculating {d}! using {d} thread(s) with big integer arithmetic...\n", .{ n, num_threads });
+
+    const BigInt = std.math.big.int.Managed;
+
+    // For big factorials, we'll use a simpler sequential approach initially
+    // since threading big integers requires more complex coordination
+    var result = try BigInt.init(allocator);
+    defer result.deinit();
+    
+    try result.set(1);
+    
+    var i: u32 = 2;
+    while (i <= n) : (i += 1) {
+        var temp = try BigInt.init(allocator);
+        defer temp.deinit();
+        try temp.set(i);
+        try result.mul(&result, &temp);
+    }
+    
+    // Convert to string for output
+    const result_str = try result.toString(allocator, 10, .lower);
+    defer allocator.free(result_str);
+    
+    try stdout.print("Result: {s}\n", .{result_str});
+}
+
+/// Threaded version for big integers (more complex implementation)
+fn calculateBigFactorialThreaded(allocator: std.mem.Allocator, n: u32, num_threads: u32) !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Calculating {d}! using {d} thread(s) with big integer arithmetic...\n", .{ n, num_threads });
+
+    const BigInt = std.math.big.int.Managed;
+    
+    // Create thread contexts
+    var thread_contexts = try allocator.alloc(BigThreadContext, num_threads);
+    defer allocator.free(thread_contexts);
+    
+    var handles = try allocator.alloc(std.Thread, num_threads);
+    defer allocator.free(handles);
+
+    const chunk: u32 = n / num_threads;
+    const remainder: u32 = n % num_threads;
+    var current: u32 = 1;
+    
+    // Initialize thread contexts and spawn threads
+    for (0..num_threads) |i| {
+        const start = current;
+        const i_u32: u32 = @intCast(i);
+        var end: u32 = undefined;
+        if (i == num_threads - 1) {
+            end = n;
+        } else {
+            end = current + chunk - 1;
+            if (i_u32 < remainder) end += 1;
+        }
+        current = end + 1;
+        
+        thread_contexts[i] = BigThreadContext{
+            .allocator = allocator,
+            .start = start,
+            .end = end,
+            .result = try BigInt.init(allocator),
+        };
+        
+        handles[i] = try std.Thread.spawn(std.Thread.SpawnConfig{}, bigThreadMain, .{&thread_contexts[i]});
+    }
+    
+    // Wait for all threads to complete
+    for (handles) |*h| h.join();
+    
+    // Multiply all partial results
+    var final_result = try BigInt.init(allocator);
+    defer final_result.deinit();
+    try final_result.set(1);
+    
+    for (thread_contexts) |*ctx| {
+        defer ctx.result.deinit();
+        try final_result.mul(&final_result, &ctx.result);
+    }
+    
+    // Convert to string for output
+    const result_str = try final_result.toString(allocator, 10, .lower);
+    defer allocator.free(result_str);
+    
+    try stdout.print("Result: {s}\n", .{result_str});
+}
+
+/// Context structure for big integer threading
+const BigThreadContext = struct {
+    allocator: std.mem.Allocator,
+    start: u32,
+    end: u32,
+    result: std.math.big.int.Managed,
+};
+
+/// Thread entry point for big integer computation
+fn bigThreadMain(ctx: *BigThreadContext) void {
+    ctx.result.set(1) catch return;
+    
+    var i: u32 = ctx.start;
+    while (i <= ctx.end) : (i += 1) {
+        if (i == 0) continue;
+        
+        var temp = std.math.big.int.Managed.init(ctx.allocator) catch return;
+        defer temp.deinit();
+        temp.set(i) catch return;
+        ctx.result.mul(&ctx.result, &temp) catch return;
+    }
 }
