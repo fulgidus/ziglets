@@ -66,6 +66,20 @@ const RawMode = if (builtin.os.tag == .windows) struct {
 } else struct {
     const posix = std.posix;
 
+    // Definizione manuale dei flag POSIX se non presenti in std.posix
+    const ICANON: u32 = 0x0002;
+    const ECHO: u32 = 0x0008;
+    const ISIG: u32 = 0x0001;
+    const IEXTEN: u32 = 0x8000;
+    const IXON: u32 = 0x0400;
+    const ICRNL: u32 = 0x0100;
+    const BRKINT: u32 = 0x0002;
+    const INPCK: u32 = 0x0010;
+    const ISTRIP: u32 = 0x0020;
+    const OPOST: u32 = 0x0001;
+    const VMIN: u32 = 6;
+    const VTIME: u32 = 5;
+
     var original_termios: posix.termios = undefined;
 
     pub fn enable() !void {
@@ -73,12 +87,12 @@ const RawMode = if (builtin.os.tag == .windows) struct {
         original_termios = try posix.tcgetattr(stdin_fd);
         var raw = original_termios;
 
-        // Disabilita echo e modalità canonica
-        raw.lflag &= ~@as(posix.tcflag_t, posix.ECHO | posix.ICANON | posix.ISIG | posix.IEXTEN);
-        raw.iflag &= ~@as(posix.tcflag_t, posix.IXON | posix.ICRNL | posix.BRKINT | posix.INPCK | posix.ISTRIP);
-        raw.oflag &= ~@as(posix.tcflag_t, posix.OPOST);
-        raw.cc[posix.VMIN] = 1;
-        raw.cc[posix.VTIME] = 0;
+        // Disabilita echo, modalità canonica e segnali
+        raw.lflag = @bitCast(@as(u32, @bitCast(raw.lflag)) & ~@as(u32, ICANON | ECHO | ISIG | IEXTEN));
+        raw.iflag = @bitCast(@as(u32, @bitCast(raw.iflag)) & ~@as(u32, IXON | ICRNL | BRKINT | INPCK | ISTRIP));
+        raw.oflag = @bitCast(@as(u32, @bitCast(raw.oflag)) & ~@as(u32, OPOST));
+        raw.cc[VMIN] = 1;
+        raw.cc[VTIME] = 0;
 
         try posix.tcsetattr(stdin_fd, .FLUSH, raw);
     }
