@@ -67,18 +67,18 @@ const RawMode = if (builtin.os.tag == .windows) struct {
     const posix = std.posix;
 
     // Definizione manuale dei flag POSIX se non presenti in std.posix
-    const ICANON: u32 = 0x0002;
-    const ECHO: u32 = 0x0008;
-    const ISIG: u32 = 0x0001;
-    const IEXTEN: u32 = 0x8000;
-    const IXON: u32 = 0x0400;
-    const ICRNL: u32 = 0x0100;
-    const BRKINT: u32 = 0x0002;
-    const INPCK: u32 = 0x0010;
-    const ISTRIP: u32 = 0x0020;
-    const OPOST: u32 = 0x0001;
-    const VMIN: u32 = 6;
-    const VTIME: u32 = 5;
+    const ICANON: u32 = 0x0002; // 0b0000000000000010
+    const ECHO: u32 = 0x0008; // 0b0000000000001000
+    const ISIG: u32 = 0x0001; // 0b0000000000000001
+    const IEXTEN: u32 = 0x8000; // 0b1000000000000000
+    const IXON: u32 = 0x0400; // 0b0000010000000000
+    const ICRNL: u32 = 0x0100; // 0b0000000100000000
+    const BRKINT: u32 = 0x0002; // 0b0000000000000010
+    const INPCK: u32 = 0x0010; // 0b0000000001000000
+    const ISTRIP: u32 = 0x0020; // 0b0000000010000000
+    const OPOST: u32 = 0x0001; // 0b0000000000000001
+    const VMIN: u32 = 6; // 0b0000000000010110
+    const VTIME: u32 = 5; // 0b0000000000010101
 
     var original_termios: posix.termios = undefined;
 
