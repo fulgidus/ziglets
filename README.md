@@ -48,6 +48,7 @@ zig-out/bin/ziglets help
 - `pgen ...` &mdash; Generate a random password
 - `calculator` &mdash; Interactive calculator (press keys, Q to exit)
 - `touch ...` &mdash; Create empty file(s)
+- `factorial <number> [num_threads]` &mdash; Calculate the factorial of a number using multiple threads
 - `help` &mdash; Shows the help page
 
 ### Example
@@ -61,6 +62,7 @@ zig-out/bin/ziglets base64 "Hello, Base64!"
 zig-out/bin/ziglets pgen -l 16 -aA1&
 zig-out/bin/ziglets calculator
 zig-out/bin/ziglets touch file.txt
+zig-out/bin/ziglets factorial 20 4
 ```
 
 ## Educational value

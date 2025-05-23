@@ -8,6 +8,7 @@ const base64 = @import("ziglets/base64.zig");
 const calc = @import("ziglets/calculator.zig");
 const pgen = @import("ziglets/pgen.zig");
 const touch = @import("ziglets/touch.zig");
+const factorial = @import("ziglets/factorial.zig");
 
 const CommandFn = *const fn (allocator: std.mem.Allocator, args: []const []const u8) anyerror!void;
 
@@ -39,6 +40,7 @@ const commands = [_]Command{
     .{ .name = "pgen", .description = "Generate a random password", .handler = pgen.run },
     .{ .name = "calculator", .description = "Interactive calculator (press keys, Esc to exit)", .handler = calc.run },
     .{ .name = "touch", .description = "Create empty file(s)", .handler = touch.run },
+    .{ .name = "factorial", .description = "Calculate factorial of a number", .handler = factorial.run },
     .{ .name = "help", .description = "Shows this page", .handler = helpHandler },
 };
 

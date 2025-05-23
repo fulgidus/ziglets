@@ -1,0 +1,14 @@
+.{
+    .name = .ziglets,
+    .kind = .executable,
+    .version = "0.1.0",
+    .paths = .{
+        "src/main.zig",
+    },
+    .fingerprint = 0x6c2e78d09fbd2eb4,
+    .dependencies = .{
+        // .bigint = .{
+        //     .url = "https://github.com/MasterQ32/zig-bigint/archive/refs/heads/main.tar.gz",
+        // },
+    },
+}
