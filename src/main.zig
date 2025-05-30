@@ -18,7 +18,7 @@ const Command = struct {
     handler: CommandFn,
 };
 
-const commands = [_]Command{
+pub const commands = [_]Command{
     .{ .name = "hello", .description = "Prints 'Hello, World!'", .handler = struct {
         pub fn run(_: std.mem.Allocator, _: []const []const u8) !void {
             hello.run();

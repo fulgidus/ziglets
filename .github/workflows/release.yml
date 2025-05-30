@@ -1,0 +1,342 @@
+name: Release
+
+# Trigger release workflow only on pushes to main branch with version tags
+# This ensures releases are only created for properly tagged commits
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+
+# Set environment variables for the entire workflow
+env:
+  ZIG_VERSION: "0.14.0"
+
+jobs:
+  # Job to validate that we're working with a proper semantic version tag
+  validate-tag:
+    name: Validate Tag
+    runs-on: ubuntu-latest
+    # Only run this job if the push includes a tag that matches semantic versioning
+    if: startsWith(github.ref, 'refs/tags/v')
+    outputs:
+      tag_name: ${{ steps.extract.outputs.tag_name }}
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract tag information
+        id: extract
+        run: |
+          # Extract the tag name from the git reference
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Validate semantic versioning format
+          if [[ ! $TAG_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Tag $TAG_NAME does not follow semantic versioning format (v*.*.*)."
+            exit 1
+          fi
+
+          echo "Validated tag: $TAG_NAME (version: $VERSION)"
+
+  # Job to build and test on multiple platforms
+  build-and-test:
+    name: Build and Test
+    needs: validate-tag
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            shell: bash
+          - os: windows-latest
+            platform: windows
+            shell: pwsh
+          - os: macos-latest
+            platform: macos
+            shell: bash
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Verify Zig installation
+        run: |
+          zig version
+          zig env
+
+      - name: Check code formatting
+        run: |
+          zig fmt --check src/
+
+      - name: Build project (Debug)
+        run: |
+          zig build
+
+      - name: Run tests
+        run: |
+          zig build test
+
+      - name: Build project (Release)
+        run: |
+          zig build -Doptimize=ReleaseFast
+
+      - name: Test binary functionality
+        run: |
+          # Test basic commands to ensure the binary works
+          ./zig-out/bin/ziglets${{ matrix.platform == 'windows' && '.exe' || '' }} help
+          ./zig-out/bin/ziglets${{ matrix.platform == 'windows' && '.exe' || '' }} hello
+
+  # Job to create multi-platform release artifacts
+  create-release:
+    name: Create Release
+    needs: [validate-tag, build-and-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Build for multiple targets
+        run: |
+          # Define all target platforms for cross-compilation
+          TARGETS=(
+            "x86_64-linux-gnu"
+            "x86_64-linux-musl"
+            "aarch64-linux-gnu"
+            "aarch64-linux-musl"
+            "x86_64-windows-gnu"
+            "x86_64-windows-msvc"
+            "aarch64-windows-gnu"
+            "x86_64-macos-none"
+            "aarch64-macos-none"
+          )
+
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+
+          # Build for each target platform
+          for target in "${TARGETS[@]}"; do
+            echo "Building for target: $target"
+            
+            # Clean previous build
+            rm -rf zig-out
+            
+            # Build for the target
+            if zig build -Dtarget="$target" -Doptimize=ReleaseFast; then
+              # Determine binary name and extension
+              if [[ $target == *"windows"* ]]; then
+                binary_name="ziglets.exe"
+                archive_ext="zip"
+              else
+                binary_name="ziglets"
+                archive_ext="tar.gz"
+              fi
+              
+              # Create target-specific directory
+              target_dir="artifacts/$target"
+              mkdir -p "$target_dir"
+              
+              # Copy binary to target directory
+              cp "zig-out/bin/$binary_name" "$target_dir/ziglets-$VERSION${binary_name#ziglets}"
+              
+              # Create compressed archive
+              cd artifacts
+              if [[ $archive_ext == "zip" ]]; then
+                zip -r "ziglets-$VERSION-$target.zip" "$target"
+              else
+                tar -czf "ziglets-$VERSION-$target.tar.gz" "$target"
+              fi
+              cd ..
+              
+              echo "✅ Successfully built for $target"
+            else
+              echo "❌ Failed to build for $target"
+            fi
+          done
+
+          # Create checksums for all artifacts
+          cd artifacts
+          find . -name "*.tar.gz" -o -name "*.zip" | xargs sha256sum > checksums.txt
+          ls -la
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          TAG_NAME="${{ needs.validate-tag.outputs.tag_name }}"
+          VERSION="${{ needs.validate-tag.outputs.version }}"
+
+          # Create release notes content
+          cat > release_notes.md << EOF
+          # Ziglets $VERSION
+
+          A collection of simple Zig CLI applications for learning and demonstration purposes.
+
+          ## 🚀 Features
+
+          This release includes the following commands:
+          - \`hello\` - Prints 'Hello, World!'
+          - \`goodbye\` - Prints 'Goodbye, World!'
+          - \`echo\` - Echo provided arguments
+          - \`guess\` - Play "Guess the number" game
+          - \`writer\` - Save text to file and display content
+          - \`base64\` - Encode text to Base64
+          - \`pgen\` - Generate random passwords
+          - \`calculator\` - Interactive calculator
+          - \`touch\` - Create empty files
+          - \`factorial\` - Calculate factorial of numbers
+          - \`help\` - Show help information
+
+          ## 📦 Downloads
+
+          Choose the appropriate binary for your platform:
+
+          ### Linux
+          - **x86_64 (glibc)**: \`ziglets-$VERSION-x86_64-linux-gnu.tar.gz\`
+          - **x86_64 (musl)**: \`ziglets-$VERSION-x86_64-linux-musl.tar.gz\`
+          - **ARM64 (glibc)**: \`ziglets-$VERSION-aarch64-linux-gnu.tar.gz\`
+          - **ARM64 (musl)**: \`ziglets-$VERSION-aarch64-linux-musl.tar.gz\`
+
+          ### Windows
+          - **x86_64 (GNU)**: \`ziglets-$VERSION-x86_64-windows-gnu.zip\`
+          - **x86_64 (MSVC)**: \`ziglets-$VERSION-x86_64-windows-msvc.zip\`
+          - **ARM64**: \`ziglets-$VERSION-aarch64-windows-gnu.zip\`
+
+          ### macOS
+          - **x86_64 (Intel)**: \`ziglets-$VERSION-x86_64-macos-none.tar.gz\`
+          - **ARM64 (Apple Silicon)**: \`ziglets-$VERSION-aarch64-macos-none.tar.gz\`
+
+          ## 🔒 Verification
+
+          All binaries are provided with SHA256 checksums in \`checksums.txt\`. Verify your download:
+
+          \`\`\`bash
+          # Linux/macOS
+          sha256sum -c checksums.txt
+
+          # Windows (PowerShell)
+          Get-FileHash <filename> -Algorithm SHA256
+          \`\`\`
+
+          ## 🛠️ Usage
+
+          After downloading and extracting:
+
+          \`\`\`bash
+          # Make executable (Linux/macOS)
+          chmod +x ziglets-$VERSION
+
+          # Run commands
+          ./ziglets-$VERSION help
+          ./ziglets-$VERSION hello
+          ./ziglets-$VERSION guess
+          \`\`\`
+
+          ## 📋 System Requirements
+
+          - **Linux**: glibc 2.17+ or musl libc
+          - **Windows**: Windows 10+ (x64) or Windows 11 (ARM64)
+          - **macOS**: macOS 10.15+ (Catalina)
+
+          ## 🔧 Building from Source
+
+          Requirements: Zig ${{ env.ZIG_VERSION }}
+
+          \`\`\`bash
+          git clone https://github.com/\${{ github.repository }}.git
+          cd ziglets
+          git checkout $TAG_NAME
+          zig build -Doptimize=ReleaseFast
+          \`\`\`
+
+          ---
+
+          **Full Changelog**: https://github.com/\${{ github.repository }}/compare/\${{ github.event.before }}...$TAG_NAME
+          EOF
+
+          echo "Release notes generated for $TAG_NAME"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-tag.outputs.tag_name }}
+          name: "Ziglets ${{ needs.validate-tag.outputs.version }}"
+          body_path: release_notes.md
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+            artifacts/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job to run deployment scripts (for demonstration/validation)
+  test-deployment-scripts:
+    name: Test Deployment Scripts
+    needs: [validate-tag, build-and-test]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            script: ./scripts/deploy-linux.sh
+          - os: windows-latest
+            script: .\scripts\deploy-windows.ps1
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Make script executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: chmod +x scripts/deploy-linux.sh
+
+      - name: Test deployment script
+        run: |
+          # Run the deployment script with the current tag
+          ${{ matrix.script }} ${{ needs.validate-tag.outputs.tag_name }}
+
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifacts-${{ matrix.os }}
+          path: artifacts/
+          retention-days: 7

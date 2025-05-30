@@ -8,6 +8,10 @@
 
 [![Zig](https://img.shields.io/badge/Zig-0.14.0-orange.svg)](https://ziglang.org/download/)
 [![License](https://img.shields.io/badge/GPL-3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
+![GitHub Stars](https://img.shields.io/github/stars/fulgidus/ziglets.svg?style=social)
+[![Latest Release](https://img.shields.io/github/v/release/fulgidus/ziglets)](https://github.com/fulgidus/ziglets/releases/latest)
+[![CI](https://github.com/fulgidus/ziglets/workflows/CI/badge.svg)](https://github.com/fulgidus/ziglets/actions/workflows/ci.yml)
+[![Release](https://github.com/fulgidus/ziglets/workflows/Release/badge.svg)](https://github.com/fulgidus/ziglets/actions/workflows/release.yml)
 
 ## Purpose
 
@@ -22,6 +26,20 @@ zig build
 ```
 
 The resulting binary will be located in `zig-out/bin/ziglets`.
+
+## Downloads
+
+Pre-built binaries are available for multiple platforms and architectures. Visit the [Releases page](https://github.com/fulgidus/ziglets/releases/latest) to download:
+
+### Supported Platforms
+- **Linux**: x86_64 and ARM64 (both glibc and musl)
+- **Windows**: x86_64 and ARM64 (GNU and MSVC toolchains)
+- **macOS**: x86_64 (Intel) and ARM64 (Apple Silicon)
+
+### Release Pipeline
+- Automated releases are created when tags following semantic versioning (`v*.*.*`) are pushed to the main branch
+- All binaries include SHA256 checksums for verification
+- Cross-platform builds are tested on every release
 
 ## Usage
 

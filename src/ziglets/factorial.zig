@@ -10,25 +10,25 @@ const DEFAULT_THREAD_COUNT = 2;
 /// Usage: ziglets factorial <number> [num_threads]
 pub fn run(allocator: std.mem.Allocator, args: []const []const u8) !void {
     const stdout = std.io.getStdOut().writer();
-    
+
     // Validate command line arguments
     if (args.len == 0) {
         try stdout.print("Usage: ziglets factorial <number> [num_threads]\n", .{});
         return;
     }
-    
+
     // Parse the input number
     const n = std.fmt.parseInt(u32, args[0], 10) catch {
         try stdout.print("Invalid number: {s}\n", .{args[0]});
         return;
     };
-    
+
     // Parse number of threads, default to 2 if not specified or invalid
     const num_threads: u32 = if (args.len > 1)
         (std.fmt.parseInt(u32, args[1], 10) catch DEFAULT_THREAD_COUNT)
     else
         DEFAULT_THREAD_COUNT;
-    
+
     // Validate thread count
     if (num_threads < 1) {
         try stdout.print("Number of threads must be at least 1.\n", .{});
@@ -41,7 +41,7 @@ pub fn run(allocator: std.mem.Allocator, args: []const []const u8) !void {
         try calculateBigFactorial(allocator, n, num_threads);
         return;
     }
-    
+
     // Use optimized u128 arithmetic for smaller factorials
     try calculateU128Factorial(allocator, n, num_threads);
 }
@@ -65,15 +65,11 @@ fn calculateU128Factorial(allocator: std.mem.Allocator, n: u32, num_threads: u32
 
     // Distribute work across threads
     const work_distribution = calculateWorkDistribution(n, num_threads);
-    
+
     // Spawn threads to compute partial products
     for (0..num_threads) |i| {
         const range = work_distribution.ranges[i];
-        handles[i] = try std.Thread.spawn(
-            std.Thread.SpawnConfig{}, 
-            computePartialProduct, 
-            .{ range.start, range.end, &results[i] }
-        );
+        handles[i] = try std.Thread.spawn(std.Thread.SpawnConfig{}, computePartialProduct, .{ range.start, range.end, &results[i] });
     }
 
     // Wait for all threads to complete
@@ -99,9 +95,9 @@ const ComputationRange = struct {
 /// Contains work distribution information for threading
 const WorkDistribution = struct {
     ranges: []ComputationRange,
-    
+
     const Self = @This();
-    
+
     fn deinit(self: Self, allocator: std.mem.Allocator) void {
         allocator.free(self.ranges);
     }
@@ -112,15 +108,15 @@ fn calculateWorkDistribution(n: u32, num_threads: u32) WorkDistribution {
     // This is a simplified version - in practice you'd want to allocate this properly
     // For now, we'll use a static array approach for clarity
     var ranges: [8]ComputationRange = undefined; // Assume max 8 threads for simplicity
-    
+
     const chunk_size = n / num_threads;
     const remainder = n % num_threads;
     var current: u32 = 1;
-    
+
     for (0..num_threads) |i| {
         const start = current;
         var end: u32 = undefined;
-        
+
         if (i == num_threads - 1) {
             // Last thread takes all remaining numbers
             end = n;
@@ -131,18 +127,18 @@ fn calculateWorkDistribution(n: u32, num_threads: u32) WorkDistribution {
                 end += 1;
             }
         }
-        
+
         ranges[i] = ComputationRange{ .start = start, .end = end };
         current = end + 1;
     }
-    
+
     return WorkDistribution{ .ranges = ranges[0..num_threads] };
 }
 
 /// Thread worker function: computes the product of numbers in range [start, end]
 fn computePartialProduct(start: u32, end: u32, result: *u128) void {
     var product: u128 = 1;
-    
+
     // Calculate product of all numbers in the assigned range
     var i: u32 = start;
     while (i <= end) : (i += 1) {
@@ -150,7 +146,7 @@ fn computePartialProduct(start: u32, end: u32, result: *u128) void {
         if (i == 0) continue;
         product *= i;
     }
-    
+
     // Store result for main thread to collect
     result.* = product;
 }
@@ -160,7 +156,7 @@ fn computePartialProduct(start: u32, end: u32, result: *u128) void {
 fn calculateBigFactorial(allocator: std.mem.Allocator, n: u32, num_threads: u32) !void {
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Calculating {d}! using big integer arithmetic...\n", .{n});
-    
+
     // Note: Threading with big integers is complex due to memory management
     // For now, we use sequential computation which is still very efficient
     _ = num_threads; // Suppress unused parameter warning
@@ -171,7 +167,7 @@ fn calculateBigFactorial(allocator: std.mem.Allocator, n: u32, num_threads: u32)
     var result = try BigInt.init(allocator);
     defer result.deinit();
     try result.set(1);
-    
+
     // Handle special case: 0! = 1
     if (n == 0) {
         const result_str = try result.toString(allocator, 10, .lower);
@@ -179,7 +175,7 @@ fn calculateBigFactorial(allocator: std.mem.Allocator, n: u32, num_threads: u32)
         try stdout.print("Result: {s}\n", .{result_str});
         return;
     }
-    
+
     // Multiply by each integer from 2 to n
     // We start from 2 since multiplying by 1 doesn't change the result
     var i: u32 = 2;
@@ -188,14 +184,14 @@ fn calculateBigFactorial(allocator: std.mem.Allocator, n: u32, num_threads: u32)
         var multiplier = try BigInt.init(allocator);
         defer multiplier.deinit();
         try multiplier.set(i);
-        
+
         // Multiply result by current number: result = result * i
         try result.mul(&result, &multiplier);
     }
-    
+
     // Convert result to string for display
     const result_str = try result.toString(allocator, 10, .lower);
     defer allocator.free(result_str);
-    
+
     try stdout.print("Result: {s}\n", .{result_str});
 }

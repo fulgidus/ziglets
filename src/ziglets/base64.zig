@@ -55,16 +55,16 @@ fn joinArgs(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 
         // Add the length of this argument to our running total
         total_len += arg.len;
     }
-    
+
     // If we have multiple arguments, we'll need spaces between them
     if (args.len > 1) {
         // Add space for one space character between each pair of arguments
         total_len += args.len - 1;
     }
-    
+
     // Request a block of memory from the allocator to hold our combined string
     const result = try allocator.alloc(u8, total_len);
-    
+
     // Keep track of our current position in the result buffer
     var index: usize = 0;
     // Loop through each argument with its index
@@ -73,7 +73,7 @@ fn joinArgs(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 
         @memcpy(result[index..][0..arg.len], arg);
         // Move our position index forward by the length of the argument we just copied
         index += arg.len;
-        
+
         // Add a space after every argument except the last one
         if (i < args.len - 1) {
             // Insert a space character at the current position
@@ -82,7 +82,7 @@ fn joinArgs(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 
             index += 1;
         }
     }
-    
+
     // Return the fully constructed string containing all arguments
     return result;
 }
