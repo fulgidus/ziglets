@@ -25,12 +25,14 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
 
       - name: Check code formatting
+        shell: bash
         run: |
           echo "Checking Zig code formatting..."
           zig fmt --check src/
           echo "✅ All Zig files are properly formatted"
 
       - name: Validate build.zig
+        shell: bash
         run: |
           echo "Validating build.zig syntax..."
           zig build --help > /dev/null
@@ -45,21 +47,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         optimize: [Debug, ReleaseFast]
-        include:
-          - os: ubuntu-latest
-            platform: linux
-            shell: bash
-          - os: windows-latest
-            platform: windows
-            shell: pwsh
-          - os: macos-latest
-            platform: macos
-            shell: bash
 
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: ${{ matrix.shell }}
 
     steps:
       - name: Checkout code
