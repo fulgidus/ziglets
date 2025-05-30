@@ -94,7 +94,7 @@ jobs:
         run: |
           echo "Testing basic binary functionality..."
           # Determine binary path based on platform
-          if [ "${{ matrix.platform }}" = "windows" ]; then
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
             BINARY="./zig-out/bin/ziglets.exe"
           else
             BINARY="./zig-out/bin/ziglets"
@@ -114,7 +114,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ziglets-${{ matrix.platform }}-${{ matrix.optimize }}
+          name: ziglets-${{ matrix.os }}-${{ matrix.optimize }}
           path: zig-out/bin/
           retention-days: 3
 

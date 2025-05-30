@@ -30,6 +30,7 @@ jobs:
 
       - name: Extract tag information
         id: extract
+        shell: bash
         run: |
           # Extract the tag name from the git reference
           TAG_NAME=${GITHUB_REF#refs/tags/}
@@ -53,20 +54,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            platform: linux
-            shell: bash
-          - os: windows-latest
-            platform: windows
-            shell: pwsh
-          - os: macos-latest
-            platform: macos
-            shell: bash
+
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: ${{ matrix.shell }}
 
     steps:
       - name: Checkout code
@@ -78,31 +67,43 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
 
       - name: Verify Zig installation
+        shell: bash
         run: |
           zig version
           zig env
 
       - name: Check code formatting
+        shell: bash
         run: |
           zig fmt --check src/
 
       - name: Build project (Debug)
+        shell: bash
         run: |
           zig build
 
       - name: Run tests
+        shell: bash
         run: |
           zig build test
 
       - name: Build project (Release)
+        shell: bash
         run: |
           zig build -Doptimize=ReleaseFast
 
       - name: Test binary functionality
+        shell: bash
         run: |
           # Test basic commands to ensure the binary works
-          ./zig-out/bin/ziglets${{ matrix.platform == 'windows' && '.exe' || '' }} help
-          ./zig-out/bin/ziglets${{ matrix.platform == 'windows' && '.exe' || '' }} hello
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BINARY="./zig-out/bin/ziglets.exe"
+          else
+            BINARY="./zig-out/bin/ziglets"
+          fi
+
+          $BINARY help
+          $BINARY hello
 
   # Job to create multi-platform release artifacts
   create-release:
@@ -124,9 +125,11 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
 
       - name: Create artifacts directory
+        shell: bash
         run: mkdir -p artifacts
 
       - name: Build for multiple targets
+        shell: bash
         run: |
           # Define all target platforms for cross-compilation
           TARGETS=(
@@ -190,6 +193,7 @@ jobs:
 
       - name: Generate release notes
         id: release_notes
+        shell: bash
         run: |
           TAG_NAME="${{ needs.validate-tag.outputs.tag_name }}"
           VERSION="${{ needs.validate-tag.outputs.version }}"
@@ -306,7 +310,6 @@ jobs:
     needs: [validate-tag, build-and-test]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
             script: ./scripts/deploy-linux.sh
@@ -327,12 +330,22 @@ jobs:
 
       - name: Make script executable (Linux)
         if: matrix.os == 'ubuntu-latest'
+        shell: bash
         run: chmod +x scripts/deploy-linux.sh
 
-      - name: Test deployment script
+      - name: Test Linux deployment script
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
         run: |
           # Run the deployment script with the current tag
-          ${{ matrix.script }} ${{ needs.validate-tag.outputs.tag_name }}
+          ./scripts/deploy-linux.sh ${{ needs.validate-tag.outputs.tag_name }}
+
+      - name: Test Windows deployment script
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Run the deployment script with the current tag
+          .\scripts\deploy-windows.ps1 ${{ needs.validate-tag.outputs.tag_name }}
 
       - name: Upload deployment artifacts
         uses: actions/upload-artifact@v4

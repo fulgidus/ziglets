@@ -1,15 +1,21 @@
 # Deploy script for Windows - Ziglets Multi-platform Release
 # This script builds Ziglets for multiple Windows targets and creates release artifacts
 #
-# Usage: .\deploy-windows.ps1 [tag_name]
+# Usage: .\deploy-windows.ps1 [tag_name] [-PushTag]
+#
+# Parameters:
+#   TagName  - Git tag to deploy (e.g., v1.0.0)
+#   PushTag  - If specified, pushes the tag to remote repository before deployment
 #
 # Prerequisites:
 # - Zig compiler installed and available in PATH
 # - Git repository with proper tags
 # - Write permissions to create artifacts directory
+# - Git remote configured for tag pushing
 
 param(
-    [string]$TagName = ""
+    [string]$TagName = "",
+    [switch]$PushTag = $false
 )
 
 # Script configuration
@@ -88,6 +94,38 @@ function Test-SemverTag {
     Write-Success "Tag '$Tag' follows semantic versioning format"
 }
 
+# Function to push tag to remote repository
+function Push-TagToRemote {
+    param([string]$Tag)
+    
+    Write-Info "Pushing tag '$Tag' to remote repository..."
+    
+    try {
+        # Check if remote origin exists
+        $RemoteOrigin = git remote get-url origin 2>$null
+        if (-not $RemoteOrigin) {
+            Write-Error-Custom "No remote 'origin' configured"
+            exit 1
+        }
+        
+        Write-Info "Remote origin: $RemoteOrigin"
+        
+        # Push the specific tag to remote
+        git push origin $Tag
+        Write-Success "Successfully pushed tag '$Tag' to remote"
+        
+        # Optionally push all tags (commented out to be more conservative)
+        # git push origin --tags
+        # Write-Success "Pushed all tags to remote"
+        
+    }
+    catch {
+        Write-Error-Custom "Failed to push tag '$Tag' to remote: $($_.Exception.Message)"
+        Write-Error-Custom "Make sure you have push permissions to the remote repository"
+        exit 1
+    }
+}
+
 # Function to build for a specific target
 function Build-Target {
     param(
@@ -153,18 +191,28 @@ function Start-Deploy {
         catch {
             $Tag = ""
         }
-        
-        if ([string]::IsNullOrEmpty($Tag)) {
+          if ([string]::IsNullOrEmpty($Tag)) {
             Write-Error-Custom "No tag specified and current commit is not tagged"
-            Write-Error-Custom "Usage: .\deploy-windows.ps1 [tag_name]"
+            Write-Error-Custom "Usage: .\deploy-windows.ps1 [tag_name] [-PushTag]"
+            Write-Error-Custom ""
+            Write-Error-Custom "Parameters:"
+            Write-Error-Custom "  tag_name  - Git tag to deploy (e.g., v1.0.0)"
+            Write-Error-Custom "  -PushTag  - Push the tag to remote repository before deployment"
             exit 1
         }
     }
     
     Write-Info "Starting deployment for tag: $Tag"
     
-    # Validate tag format and commit
+    # Validate tag format
     Test-SemverTag $Tag
+    
+    # Push tag to remote if requested
+    if ($PushTag) {
+        Push-TagToRemote $Tag
+    }
+    
+    # Validate that we're on the correct tag
     Test-Tag $Tag
     
     # Extract version from tag (remove 'v' prefix)

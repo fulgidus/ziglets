@@ -3,12 +3,17 @@
 # Deploy script for Linux - Ziglets Multi-platform Release
 # This script builds Ziglets for multiple Linux targets and creates release artifacts
 # 
-# Usage: ./deploy-linux.sh [tag_name]
+# Usage: ./deploy-linux.sh [tag_name] [--push-tag]
 # 
+# Parameters:
+#   tag_name   - Git tag to deploy (e.g., v1.0.0)
+#   --push-tag - Push the tag to remote repository before deployment
+#
 # Prerequisites:
 # - Zig compiler installed and available in PATH
 # - Git repository with proper tags
 # - Write permissions to create artifacts directory
+# - Git remote configured for tag pushing
 
 set -euo pipefail
 
@@ -41,6 +46,33 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# Parse command line arguments
+PUSH_TAG=false
+TAG_NAME=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --push-tag)
+            PUSH_TAG=true
+            shift
+            ;;
+        -*)
+            print_error "Unknown option: $1"
+            echo "Usage: $0 [tag_name] [--push-tag]"
+            exit 1
+            ;;
+        *)
+            if [[ -z "$TAG_NAME" ]]; then
+                TAG_NAME="$1"
+            else
+                print_error "Multiple tag names provided: '$TAG_NAME' and '$1'"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
 
 # Function to check if we're on a tagged commit
 check_tag() {
@@ -84,6 +116,35 @@ validate_semver_tag() {
     fi
     
     print_success "Tag '${tag}' follows semantic versioning format"
+}
+
+# Function to push tag to remote repository
+push_tag_to_remote() {
+    local tag="$1"
+    
+    print_info "Pushing tag '${tag}' to remote repository..."
+    
+    # Check if remote origin exists
+    if ! git remote get-url origin >/dev/null 2>&1; then
+        print_error "No remote 'origin' configured"
+        exit 1
+    fi
+    
+    local remote_origin=$(git remote get-url origin)
+    print_info "Remote origin: ${remote_origin}"
+    
+    # Push the specific tag to remote
+    if git push origin "${tag}"; then
+        print_success "Successfully pushed tag '${tag}' to remote"
+    else
+        print_error "Failed to push tag '${tag}' to remote"
+        print_error "Make sure you have push permissions to the remote repository"
+        exit 1
+    fi
+    
+    # Optionally push all tags (commented out to be more conservative)
+    # git push origin --tags
+    # print_success "Pushed all tags to remote"
 }
 
 # Function to build for a specific target
@@ -131,15 +192,26 @@ deploy() {
         tag_name=$(git describe --tags --exact-match 2>/dev/null || echo "")
         if [ -z "${tag_name}" ]; then
             print_error "No tag specified and current commit is not tagged"
-            print_error "Usage: $0 [tag_name]"
+            print_error "Usage: $0 [tag_name] [--push-tag]"
+            print_error ""
+            print_error "Parameters:"
+            print_error "  tag_name   - Git tag to deploy (e.g., v1.0.0)"
+            print_error "  --push-tag - Push the tag to remote repository before deployment"
             exit 1
         fi
     fi
     
     print_info "Starting deployment for tag: ${tag_name}"
     
-    # Validate tag format and commit
+    # Validate tag format
     validate_semver_tag "${tag_name}"
+    
+    # Push tag to remote if requested
+    if [ "${PUSH_TAG}" = true ]; then
+        push_tag_to_remote "${tag_name}"
+    fi
+    
+    # Validate that we're on the correct tag
     check_tag "${tag_name}"
     
     # Extract version from tag (remove 'v' prefix)
@@ -211,7 +283,7 @@ main() {
     print_info "Using Zig: $(zig version)"
     
     # Start deployment
-    deploy "$@"
+    deploy "${TAG_NAME}"
 }
 
 # Run main function with all arguments
