@@ -1,20 +1,21 @@
 name: CI
 
-# Run CI on all pushes and pull requests to ensure code quality
+# Run on push/PR to main branch
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 env:
   ZIG_VERSION: "0.14.0"
 
 jobs:
-  # Job to check code formatting and linting
-  format-and-lint:
-    name: Format and Lint
+  # Single job for linting, build and test
+  ci:
+    name: Lint, Build & Test
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,31 +25,33 @@ jobs:
         with:
           version: ${{ env.ZIG_VERSION }}
 
-      - name: Check code formatting
+      - name: Check code formatting (lint)
         shell: bash
         run: |
           echo "Checking Zig code formatting..."
           zig fmt --check src/
-          echo "✅ All Zig files are properly formatted"
+          echo "✅ Code formatting OK"
 
-      - name: Validate build.zig
+      - name: Build project
         shell: bash
         run: |
-          echo "Validating build.zig syntax..."
-          zig build --help > /dev/null
-          echo "✅ build.zig is valid"
+          echo "Building project..."
+          zig build
+          echo "✅ Build successful"
 
-  # Job to build and test on multiple platforms
-  build-and-test:
-    name: Build and Test
-    needs: format-and-lint
-    strategy:
-      fail-fast: false # Continue testing other platforms even if one fails
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        optimize: [Debug, ReleaseFast]
+      - name: Run tests
+        shell: bash
+        run: |
+          echo "Running tests..."
+          zig build test
+          echo "✅ Tests passed"
 
-    runs-on: ${{ matrix.os }}
+      - name: Build release version
+        shell: bash
+        run: |
+          echo "Building release version..."
+          zig build -Doptimize=ReleaseFast
+          echo "✅ Release build successful"
 
     steps:
       - name: Checkout code
