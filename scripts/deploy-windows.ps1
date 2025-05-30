@@ -254,8 +254,7 @@ function Start-Deploy {
         Write-Warning "Some builds failed: $($FailedBuilds -join ', ')"
         Write-Warning "Successful builds are available in: $ArtifactsDir"
     }
-    
-    # Create checksums for all artifacts
+      # Create checksums for all artifacts
     Set-Location $ArtifactsDir
     $ZipFiles = Get-ChildItem -Filter "*.zip"
     if ($ZipFiles.Count -gt 0) {
@@ -267,6 +266,9 @@ function Start-Deploy {
         $Checksums | Out-File -FilePath "checksums.txt" -Encoding UTF8
         Write-Success "Created checksums.txt"
     }
+    
+    # Return to project root directory
+    Set-Location $ProjectRoot
     
     Write-Success "Deployment completed for tag: $Tag"
     Write-Info "Artifacts available in: $ArtifactsDir"
