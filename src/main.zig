@@ -9,6 +9,7 @@ const calc = @import("ziglets/calculator.zig");
 const pgen = @import("ziglets/pgen.zig");
 const touch = @import("ziglets/touch.zig");
 const factorial = @import("ziglets/factorial.zig");
+const clock = @import("ziglets/clock.zig");
 
 const CommandFn = *const fn (allocator: std.mem.Allocator, args: []const []const u8) anyerror!void;
 
@@ -41,6 +42,7 @@ pub const commands = [_]Command{
     .{ .name = "calculator", .description = "Interactive calculator (press keys, Esc to exit)", .handler = calc.run },
     .{ .name = "touch", .description = "Create empty file(s)", .handler = touch.run },
     .{ .name = "factorial", .description = "Calculate factorial of a number", .handler = factorial.run },
+    .{ .name = "clock", .description = "Display a live terminal clock (Ctrl+C to exit)", .handler = clock.run },
     .{ .name = "help", .description = "Shows this page", .handler = helpHandler },
 };
 
